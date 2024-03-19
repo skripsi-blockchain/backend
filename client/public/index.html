@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Web site created using create-react-app"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <!--
+      Notice the use of %PUBLIC_URL% in the tags above.
+      It will be replaced with the URL of the `public` folder during the build.
+      Only files inside the `public` folder can be referenced from the HTML.
+
+      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
+      work correctly both with client-side routing and a non-root public URL.
+      Learn how to configure a non-root public URL by running `npm run build`.
+    -->
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- MetisMenu CSS -->
+    <link href="css/metisMenu.min.css" rel="stylesheet" />
+
+    <!-- Timeline CSS -->
+    <link href="css/timeline.css" rel="stylesheet" />
+
+    <!-- Custom CSS -->
+    <link href="css/startmin.css" rel="stylesheet" />
+
+    <!-- Morris Charts CSS -->
+    <link href="css/morris.css" rel="stylesheet" />
+
+    <!-- DataTables CSS -->
+    <link href="css/dataTables/dataTables.bootstrap.css" rel="stylesheet" />
+
+    <!-- DataTables Responsive CSS -->
+    <link href="css/dataTables/dataTables.responsive.css" rel="stylesheet" />
+    <!-- Custom Fonts -->
+    <link href="css/font-awesome.min.css" rel="stylesheet" type="text/css" />
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    <title>React Truffle Box</title>
+  </head>
+  <body>
+    <noscript>
+      JavaScript is disabled in your browser. Please consider enabling it to run
+      this app.
+    </noscript>
+    <div id="root"></div>
+    <script>
+      const xValues = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+
+      new Chart("myChart", {
+        type: "line",
+        data: {
+          labels: xValues,
+          datasets: [
+            {
+              label: "Dataset 1",
+              data: [860, 1140, 1060, 1060, 1070, 1110, 1330, 2210, 7830, 2478],
+              borderColor: "red",
+              fill: false,
+            },
+            {
+              label: "Dataset 2",
+              data: [
+                1600, 1700, 1700, 1900, 2000, 2700, 4000, 5000, 6000, 7000,
+              ],
+              borderColor: "green",
+              fill: false,
+            },
+            {
+              label: "Dataset 3",
+              data: [300, 700, 2000, 5000, 6000, 4000, 2000, 1000, 200, 100],
+              borderColor: "blue",
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          legend: {
+            display: true,
+            position: "bottom", // You can change the legend position
+            labels: {
+              boxWidth: 15, // Adjust the legend box width
+              fontSize: 10, // Adjust the legend font size
+            },
+          },
+        },
+      });
+    </script>
+    <script>
+      const yValues = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000];
+
+      new Chart("myChart2", {
+        type: "line",
+        data: {
+          labels: yValues,
+          datasets: [
+            {
+              label: "Dataset 1",
+              data: [860, 1140, 1060, 1060, 1070, 1110, 1330, 2210, 7830, 2478],
+              borderColor: "red",
+              fill: false,
+            },
+            {
+              label: "Dataset 2",
+              data: [
+                1600, 1700, 1700, 1900, 2000, 2700, 4000, 5000, 6000, 7000,
+              ],
+              borderColor: "green",
+              fill: false,
+            },
+            {
+              label: "Dataset 3",
+              data: [300, 700, 2000, 5000, 6000, 4000, 2000, 1000, 200, 100],
+              borderColor: "blue",
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          legend: {
+            display: true,
+            position: "bottom", // You can change the legend position
+            labels: {
+              boxWidth: 15, // Adjust the legend box width
+              fontSize: 10, // Adjust the legend font size
+            },
+          },
+        },
+      });
+    </script>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/metisMenu.min.js"></script>
+    <script src="js/raphael.min.js"></script>
+    <script src="js/startmin.js"></script>
+    <script src="js/dataTables/jquery.dataTables.min.js"></script>
+    <script src="js/dataTables/dataTables.bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    <script>
+      $(document).ready(function () {
+        $("#dataTables-example").DataTable({
+          responsive: true,
+        });
+      });
+    </script>
+  </body>
+</html>
