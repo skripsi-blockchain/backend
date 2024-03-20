@@ -91,4 +91,52 @@ function find(uint256 _id) internal view returns (uint256) {
   return type(uint256).max;
 }
 
+// Fungsi untuk mengurangi stok barang berdasarkan indeks item dan jumlah yang akan dikurangkan
+function kurangiStokBarang(uint256 _itemIndex, uint256 _jumlah) public {
+    // Memastikan _itemIndex valid
+    require(_itemIndex < items.length, "Index item tidak valid");
+
+    // Memastikan jumlah stok mencukupi untuk dikurangkan
+    require(items[_itemIndex].stok >= _jumlah, "Stok tidak mencukupi");
+
+    // Mengurangi stok barang
+    items[_itemIndex].stok -= _jumlah;
+}
+
+}
+
+contract Transaksi {
+    struct Keranjang {
+        string namaBarang;
+        uint256 hargaSatuan;
+        uint256 jumlah;
+        uint256 totalHarga;
+    }
+
+    mapping(address => Keranjang[]) public keranjangs;
+    Inventaris public inventaris;
+
+    constructor(address _inventarisAddress) {
+        inventaris = Inventaris(_inventarisAddress);
+    }
+
+    // Fungsi untuk menambahkan barang ke keranjang
+    function tambahBarangKeKeranjang(address _owner, uint256 _itemIndex, uint256 _jumlah) public {
+    (, , string memory nama , uint256 stok, uint256 harga) = inventaris.getItem(_itemIndex);
+    require(stok >= _jumlah, "Stok tidak mencukupi");
+
+     // Panggil fungsi kurangiStokBarang dari kontrak Inventaris
+    inventaris.kurangiStokBarang(_itemIndex, _jumlah);
+
+    keranjangs[_owner].push(Keranjang( nama , harga, _jumlah, harga * _jumlah));
+}
+
+function getDataKeranjang(address _owner) public view returns (Keranjang[] memory) {
+    return keranjangs[_owner];
+}
+
+    // Fungsi untuk mendapatkan panjang keranjang pengguna
+    function getPanjangKeranjang(address _owner) public view returns (uint256) {
+        return keranjangs[_owner].length;
+    }
 }

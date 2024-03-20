@@ -5,17 +5,7 @@ import DataTransaksi from "./DataTransaksi";
 function Pages() {
   const { state } = useEth();
 
-  return (
-    <div>
-      {!state.artifact ? (
-        <Home />
-      ) : !state.contract ? (
-        <Home />
-      ) : (
-        <DataTransaksi />
-      )}
-    </div>
-  );
+  return <div>{!state ? <Home /> : <DataTransaksi />}</div>;
 }
 
 export default Pages;

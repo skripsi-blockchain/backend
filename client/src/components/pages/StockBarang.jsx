@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 
 const StockBarang = () => {
   const {
-    state: { contract, accounts },
+    state: { inventarisContract, accounts },
   } = useEth();
 
   const [items, setItems] = useState("");
@@ -24,12 +24,14 @@ const StockBarang = () => {
   });
 
   const fetchData = async () => {
-    if (contract) {
+    if (inventarisContract) {
       try {
-        const itemCount = await contract.methods.getItemCount().call();
+        const itemCount = await inventarisContract.methods
+          .getItemCount()
+          .call();
         const itemData = [];
         for (let i = 0; i < itemCount; i++) {
-          const item = await contract.methods.getItem(i).call();
+          const item = await inventarisContract.methods.getItem(i).call();
           itemData.push({
             id: item[0],
             kode: item[1],
@@ -49,17 +51,17 @@ const StockBarang = () => {
     // Mengambil data dari kontrak cerdas
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contract]);
+  }, [inventarisContract]);
 
   const handleSubmit = async (e) => {
     console.log(nama);
     e.preventDefault();
-    if (!contract) {
-      console.error("Contract not loaded");
+    if (!inventarisContract) {
+      console.error("inventarisContract not loaded");
       return;
     }
     try {
-      await contract.methods
+      await inventarisContract.methods
         .addItem(kode, nama, parseInt(stok), parseInt(harga))
         .send({ from: accounts[0] });
       fetchData();
@@ -76,12 +78,14 @@ const StockBarang = () => {
 
   const handleDeleteItem = async (id) => {
     console.log("hapus");
-    if (!contract) {
-      console.error("Contract not loaded");
+    if (!inventarisContract) {
+      console.error("inventarisContract not loaded");
       return;
     }
     try {
-      await contract.methods.deleteItem(id).send({ from: accounts[0] });
+      await inventarisContract.methods
+        .deleteItem(id)
+        .send({ from: accounts[0] });
       fetchData(); // Refresh data after deletion
       console.log("Item deleted successfully");
     } catch (error) {
@@ -100,8 +104,8 @@ const StockBarang = () => {
 
   const editItem = async () => {
     try {
-      if (!contract) {
-        console.error("Contract not loaded");
+      if (!inventarisContract) {
+        console.error("inventarisContract not loaded");
         return;
       }
 
@@ -113,7 +117,7 @@ const StockBarang = () => {
 
       // Lakukan validasi atau manipulasi lain yang diperlukan sebelum mengirim permintaan edit
 
-      await contract.methods
+      await inventarisContract.methods
         .editItem(
           editFormData.id,
           editFormData.kode,

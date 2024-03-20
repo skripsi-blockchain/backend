@@ -8,20 +8,24 @@ import useEth from "../../contexts/EthContext/useEth";
 
 const DataTransaksi = () => {
   const {
-    state: { contract },
+    state: { inventarisContract, transaksiContract, accounts },
   } = useEth();
 
   const [items, setItems] = useState("");
+  const [selectedItemId, setSelectedItemId] = useState("");
+  const [jumlahBarang, setJumlahBarang] = useState(0);
 
   useEffect(() => {
     // Mengambil data dari kontrak cerdas
     const fetchData = async () => {
-      if (contract) {
+      if (inventarisContract) {
         try {
-          const itemCount = await contract.methods.getItemCount().call();
+          const itemCount = await inventarisContract.methods
+            .getItemCount()
+            .call();
           const itemData = [];
           for (let i = 0; i < itemCount; i++) {
-            const item = await contract.methods.getItem(i).call();
+            const item = await inventarisContract.methods.getItem(i).call();
             itemData.push({
               id: item[0],
               kode: item[1],
@@ -38,7 +42,52 @@ const DataTransaksi = () => {
     };
 
     fetchData();
-  }, [contract]);
+  }, [inventarisContract]);
+
+  const handleTambahBarangKeKeranjang = async () => {
+    try {
+      await transaksiContract.methods
+        .tambahBarangKeKeranjang(accounts[0], selectedItemId, jumlahBarang)
+        .send({ from: accounts[0] });
+      // Jika berhasil tambah ke keranjang, refresh data barang
+      setJumlahBarang(0);
+      setSelectedItemId("");
+    } catch (error) {
+      console.error("Error adding item to cart:", error);
+    }
+  };
+
+  const [keranjang, setKeranjang] = useState([]);
+
+  useEffect(() => {
+    const fetchKeranjang = async () => {
+      if (transaksiContract) {
+        try {
+          // Mendapatkan panjang keranjang pengguna
+          const panjangKeranjang = await transaksiContract.methods
+            .getPanjangKeranjang()
+            .call();
+
+          // Mendapatkan data keranjang satu per satu
+          const keranjangData = [];
+          for (let i = 0; i < panjangKeranjang; i++) {
+            const keranjangItem = await transaksiContract.methods
+              .getDataKeranjang(accounts[0])
+              .call();
+            keranjangData.push(keranjangItem);
+          }
+          setKeranjang(keranjangData);
+        } catch (error) {
+          console.error("Error fetching keranjang:", error);
+        }
+      }
+    };
+
+    fetchKeranjang();
+  }, [transaksiContract]);
+
+  console.log(keranjang);
+  console.log(accounts);
 
   return (
     <div>
@@ -130,10 +179,16 @@ const DataTransaksi = () => {
                         <th> Nama Barang </th>
                         <th> : </th>
                         <th>
-                          <select>
-                            <option value="option1">Sabun</option>
-                            <option value="option2">Option 2</option>
-                            <option value="option3">Option 3</option>
+                          <select
+                            value={selectedItemId}
+                            onChange={(e) => setSelectedItemId(e.target.value)}
+                          >
+                            {items &&
+                              items.map((item) => (
+                                <option key={item.id} value={item.id - 1}>
+                                  {item.nama}
+                                </option>
+                              ))}
                           </select>
                         </th>
                       </tr>
@@ -142,7 +197,12 @@ const DataTransaksi = () => {
                         <th> : </th>
                         <th>
                           {" "}
-                          <input type="number" placeholder="" />{" "}
+                          <input
+                            type="number"
+                            placeholder=""
+                            value={jumlahBarang}
+                            onChange={(e) => setJumlahBarang(e.target.value)}
+                          />{" "}
                         </th>
                       </tr>
                     </table>
@@ -153,8 +213,9 @@ const DataTransaksi = () => {
                         color: "white",
                         fontSize: "14px",
                       }}
-                      data-toggle="modal"
-                      data-target="#transaksiModal"
+                      // data-toggle="modal"
+                      // data-target="#transaksiModal"
+                      onClick={handleTambahBarangKeKeranjang}
                     >
                       Tambah ke Tabel
                     </button>
@@ -171,24 +232,14 @@ const DataTransaksi = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <th scope="row">Sabun</th>
-                          <td>2</td>
-                          <td>23.000</td>
-                          <td>46000</td>
-                        </tr>
-                        <tr>
-                          <th scope="row">Sabun</th>
-                          <td>2</td>
-                          <td>23.000</td>
-                          <td>46000</td>
-                        </tr>
-                        <tr>
-                          <th scope="row"></th>
-                          <td></td>
-                          <td>Total Transaksi</td>
-                          <td>92.000</td>
-                        </tr>
+                        {keranjang.map((item, index) => (
+                          <tr key={index}>
+                            <th scope="row">[{item.namaBarang}]</th>
+                            <td>{item.jumlah}</td>
+                            <td>{item.hargaSatuan}</td>
+                            <td>{item.totalHarga}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -219,7 +270,6 @@ const DataTransaksi = () => {
                     <tr>
                       <th>Kode Transaksi</th>
                       <th>Tanggal</th>
-                      <th>Kuantitas</th>
                       <th>Jumlah Transaksi</th>
                       <th>Aksi</th>
                     </tr>
