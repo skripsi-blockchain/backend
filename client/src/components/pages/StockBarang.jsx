@@ -48,6 +48,7 @@ const StockBarang = () => {
   useEffect(() => {
     // Mengambil data dari kontrak cerdas
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contract]);
 
   const handleSubmit = async (e) => {
@@ -99,6 +100,19 @@ const StockBarang = () => {
 
   const editItem = async () => {
     try {
+      if (!contract) {
+        console.error("Contract not loaded");
+        return;
+      }
+
+      // Periksa apakah item yang akan diedit sudah ditemukan
+      if (!editFormData.id) {
+        console.error("Item ID is not provided");
+        return;
+      }
+
+      // Lakukan validasi atau manipulasi lain yang diperlukan sebelum mengirim permintaan edit
+
       await contract.methods
         .editItem(
           editFormData.id,
@@ -387,7 +401,7 @@ const StockBarang = () => {
                               id="kodeBarang"
                               value={editFormData.kode}
                               onChange={handleInputChange}
-                              name="kodeBarang"
+                              name="kode"
                               required
                             />
                           </div>
@@ -400,7 +414,7 @@ const StockBarang = () => {
                               id="namaBarang"
                               value={editFormData.nama}
                               onChange={handleInputChange}
-                              name="namaBarang"
+                              name="nama"
                               required
                             />
                           </div>
@@ -413,7 +427,7 @@ const StockBarang = () => {
                               id="jumlahBeli"
                               value={editFormData.stok}
                               onChange={handleInputChange}
-                              name="jumlahBeli"
+                              name="stok"
                               required
                             />
                           </div>
@@ -424,19 +438,23 @@ const StockBarang = () => {
                               type="number"
                               className="form-control"
                               id="hargaSatuan"
-                              name="hargaSatuan"
+                              name="harga"
                               value={editFormData.harga}
                               onChange={handleInputChange}
                               required
                             />
                           </div>
 
+                          <button type="submit" className="btn btn-primary">
+                            Submit
+                          </button>
                           <button
                             type="button"
                             className="btn btn-danger"
-                            onClick="submitTransaksi()"
+                            data-dismiss="modal"
+                            style={{ marginLeft: "10px" }}
                           >
-                            Submit
+                            Close
                           </button>
                         </form>
                       </div>
