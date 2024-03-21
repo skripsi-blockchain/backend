@@ -106,37 +106,137 @@ function kurangiStokBarang(uint256 _itemIndex, uint256 _jumlah) public {
 }
 
 contract Transaksi {
-    struct Keranjang {
+    struct TransaksiItemDetail {
         string namaBarang;
         uint256 hargaSatuan;
         uint256 jumlah;
         uint256 totalHarga;
     }
 
-    mapping(address => Keranjang[]) public keranjangs;
+    struct TransaksiItem {
+        uint256 kodeTransaksi;
+        uint256 tanggalTransaksi;
+        uint256 totalTransaksi;
+        uint256[] itemIndexes; // Menyimpan indeks item dalam keranjangs
+    }
+
+    // Event untuk mengonfirmasi transaksi
+    event TransaksiSelesai(address indexed buyer, uint256 kodeTransaksi, uint256 tanggalTransaksi, uint256 totalTransaksi, uint256[] items);
+
     Inventaris public inventaris;
+    mapping(address => TransaksiItemDetail[]) private keranjangs;
+    mapping(address => TransaksiItem[]) private transaksis;
+
+    uint256 private lastTransactionCode = 1;
 
     constructor(address _inventarisAddress) {
         inventaris = Inventaris(_inventarisAddress);
     }
 
-    // Fungsi untuk menambahkan barang ke keranjang
-    function tambahBarangKeKeranjang(address _owner, uint256 _itemIndex, uint256 _jumlah) public {
-    (, , string memory nama , uint256 stok, uint256 harga) = inventaris.getItem(_itemIndex);
-    require(stok >= _jumlah, "Stok tidak mencukupi");
+    function generateTransactionCode() internal returns (uint256) {
+        // Increment kode transaksi
+        lastTransactionCode++;
 
-     // Panggil fungsi kurangiStokBarang dari kontrak Inventaris
-    inventaris.kurangiStokBarang(_itemIndex, _jumlah);
+        // Mengembalikan kode transaksi terbaru
+        return lastTransactionCode;
+    }
 
-    keranjangs[_owner].push(Keranjang( nama , harga, _jumlah, harga * _jumlah));
-}
+    function tambahBarangKeKeranjang(uint256 _itemIndex, uint256 _jumlah) public {
+        require(_jumlah > 0, "Jumlah barang harus lebih dari 0");
 
-function getDataKeranjang(address _owner) public view returns (Keranjang[] memory) {
-    return keranjangs[_owner];
-}
+        (, , string memory nama , uint256 stok, uint256 harga) = inventaris.getItem(_itemIndex);
+        require(stok >= _jumlah, "Stok tidak mencukupi");
 
-    // Fungsi untuk mendapatkan panjang keranjang pengguna
-    function getPanjangKeranjang(address _owner) public view returns (uint256) {
-        return keranjangs[_owner].length;
+        keranjangs[msg.sender].push(TransaksiItemDetail({
+            namaBarang: nama,
+            hargaSatuan: harga,
+            jumlah: _jumlah,
+            totalHarga: harga * _jumlah
+        }));
+
+        // Kurangi stok barang di inventaris
+        inventaris.kurangiStokBarang(_itemIndex, _jumlah);
+    }
+
+    function selesaikanTransaksi() public {
+        TransaksiItemDetail[] storage items = keranjangs[msg.sender];
+        require(items.length > 0, "Keranjang kosong");
+
+        // Menghitung total transaksi
+        uint256 totalTransaksi = 0;
+        for (uint256 i = 0; i < items.length; i++) {
+            totalTransaksi += items[i].totalHarga;
+        }
+
+        // Mendapatkan kode transaksi dan tanggal transaksi baru
+        uint256 kodeTransaksi = generateTransactionCode();
+        uint256 timestamp = block.timestamp;
+        uint256 tanggalTransaksi = timestamp / (24 * 60 * 60); // Mengambil tanggal (tanpa waktu)
+
+        // Membuat Transaksi baru
+        TransaksiItem memory transaksiItem = TransaksiItem({
+            kodeTransaksi: kodeTransaksi,
+            tanggalTransaksi: tanggalTransaksi,
+            totalTransaksi: totalTransaksi,
+            itemIndexes: new uint256[](items.length) // Membuat array baru untuk menyimpan indeks item
+        });
+
+        // Menambahkan indeks item ke Transaksi
+        for (uint256 i = 0; i < items.length; i++) {
+            transaksiItem.itemIndexes[i] = keranjangs[msg.sender].length - 1; // Menggunakan indeks item terakhir dalam keranjangs
+        }
+
+        // Menambahkan Transaksi ke data transaksi
+        transaksis[msg.sender].push(transaksiItem);
+
+        // Menghapus semua item dari keranjang
+        delete keranjangs[msg.sender];
+
+        // Emit event untuk mengonfirmasi transaksi
+        emit TransaksiSelesai(msg.sender, kodeTransaksi, tanggalTransaksi, totalTransaksi, transaksiItem.itemIndexes);
+    }
+
+    function getDataKeranjang(address _owner) public view returns (TransaksiItemDetail[] memory) {
+        return keranjangs[_owner];
+    }
+
+    function getDataTransaksi(address _buyer) public view returns (TransaksiItem[] memory) {
+        return transaksis[_buyer];
     }
 }
+
+// contract Transaksi {
+//     struct Keranjang {
+//         string namaBarang;
+//         uint256 hargaSatuan;
+//         uint256 jumlah;
+//         uint256 totalHarga;
+//     }
+
+//     mapping(address => Keranjang[]) public keranjangs;
+//     Inventaris public inventaris;
+
+//     constructor(address _inventarisAddress) {
+//         inventaris = Inventaris(_inventarisAddress);
+//     }
+
+//     // Fungsi untuk menambahkan barang ke keranjang
+//     function tambahBarangKeKeranjang(address _owner, uint256 _itemIndex, uint256 _jumlah) public {
+//     (, , string memory nama , uint256 stok, uint256 harga) = inventaris.getItem(_itemIndex);
+//     require(stok >= _jumlah, "Stok tidak mencukupi");
+
+//      // Panggil fungsi kurangiStokBarang dari kontrak Inventaris
+//     inventaris.kurangiStokBarang(_itemIndex, _jumlah);
+
+//     keranjangs[_owner].push(Keranjang( nama , harga, _jumlah, harga * _jumlah));
+// }
+
+// function getDataKeranjang(address _owner) public view returns (Keranjang[] memory) {
+//     return keranjangs[_owner];
+// }
+
+//     // Fungsi untuk mendapatkan panjang keranjang pengguna
+//     function getPanjangKeranjang(address _owner) public view returns (uint256) {
+//         return keranjangs[_owner].length;
+//     }
+// }

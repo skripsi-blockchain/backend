@@ -15,43 +15,46 @@ const DataTransaksi = () => {
   const [selectedItemId, setSelectedItemId] = useState("");
   const [jumlahBarang, setJumlahBarang] = useState(0);
 
-  useEffect(() => {
-    // Mengambil data dari kontrak cerdas
-    const fetchData = async () => {
-      if (inventarisContract) {
-        try {
-          const itemCount = await inventarisContract.methods
-            .getItemCount()
-            .call();
-          const itemData = [];
-          for (let i = 0; i < itemCount; i++) {
-            const item = await inventarisContract.methods.getItem(i).call();
-            itemData.push({
-              id: item[0],
-              kode: item[1],
-              nama: item[2],
-              stok: item[3],
-              harga: item[4],
-            });
-          }
-          setItems(itemData);
-        } catch (error) {
-          console.error("Error fetching data:", error);
+  // Mengambil data dari kontrak cerdas
+  const fetchData = async () => {
+    if (inventarisContract) {
+      try {
+        const itemCount = await inventarisContract.methods
+          .getItemCount()
+          .call();
+        const itemData = [];
+        for (let i = 0; i < itemCount; i++) {
+          const item = await inventarisContract.methods.getItem(i).call();
+          itemData.push({
+            id: item[0],
+            kode: item[1],
+            nama: item[2],
+            stok: item[3],
+            harga: item[4],
+          });
         }
+        setItems(itemData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
       }
-    };
+    }
+  };
 
+  useEffect(() => {
     fetchData();
   }, [inventarisContract]);
 
   const handleTambahBarangKeKeranjang = async () => {
     try {
       await transaksiContract.methods
-        .tambahBarangKeKeranjang(accounts[0], selectedItemId, jumlahBarang)
+        .tambahBarangKeKeranjang(selectedItemId, jumlahBarang)
         .send({ from: accounts[0] });
       // Jika berhasil tambah ke keranjang, refresh data barang
       setJumlahBarang(0);
       setSelectedItemId("");
+      fetchKeranjang();
+      fetchData();
+      console.log("berhasil");
     } catch (error) {
       console.error("Error adding item to cart:", error);
     }
@@ -59,35 +62,37 @@ const DataTransaksi = () => {
 
   const [keranjang, setKeranjang] = useState([]);
 
-  useEffect(() => {
-    const fetchKeranjang = async () => {
-      if (transaksiContract) {
-        try {
-          // Mendapatkan panjang keranjang pengguna
-          const panjangKeranjang = await transaksiContract.methods
-            .getPanjangKeranjang()
-            .call();
+  const fetchKeranjang = async () => {
+    if (transaksiContract) {
+      try {
+        const keranjangItem = await transaksiContract.methods
+          .getDataKeranjang(accounts[0])
+          .call();
+        console.log(keranjangItem);
 
-          // Mendapatkan data keranjang satu per satu
-          const keranjangData = [];
-          for (let i = 0; i < panjangKeranjang; i++) {
-            const keranjangItem = await transaksiContract.methods
-              .getDataKeranjang(accounts[0])
-              .call();
-            keranjangData.push(keranjangItem);
-          }
-          setKeranjang(keranjangData);
-        } catch (error) {
-          console.error("Error fetching keranjang:", error);
-        }
+        setKeranjang(keranjangItem);
+      } catch (error) {
+        console.error("Error fetching keranjang:", error);
       }
-    };
-
+    }
+  };
+  useEffect(() => {
     fetchKeranjang();
-  }, [transaksiContract]);
-
+  }, [transaksiContract, accounts]);
   console.log(keranjang);
-  console.log(accounts);
+
+  const selesaikanTransaksi = async () => {
+    try {
+      await transaksiContract.methods
+        .selesaikanTransaksi()
+        .send({ from: accounts[0] });
+      // Setelah transaksi selesai, perbarui keranjang
+      setKeranjang([]);
+      console.log("Transaksi berhasil diselesaikan");
+    } catch (error) {
+      console.error("Error completing transaction:", error);
+    }
+  };
 
   return (
     <div>
@@ -183,6 +188,7 @@ const DataTransaksi = () => {
                             value={selectedItemId}
                             onChange={(e) => setSelectedItemId(e.target.value)}
                           >
+                            <option value="">Pilih Barang</option>
                             {items &&
                               items.map((item) => (
                                 <option key={item.id} value={item.id - 1}>
@@ -234,7 +240,7 @@ const DataTransaksi = () => {
                       <tbody>
                         {keranjang.map((item, index) => (
                           <tr key={index}>
-                            <th scope="row">[{item.namaBarang}]</th>
+                            <th scope="row">{item.namaBarang}</th>
                             <td>{item.jumlah}</td>
                             <td>{item.hargaSatuan}</td>
                             <td>{item.totalHarga}</td>
@@ -248,6 +254,7 @@ const DataTransaksi = () => {
                       type="button"
                       className="btn"
                       style={{ backgroundColor: "#CA0C0C", color: "white" }}
+                      onClick={selesaikanTransaksi}
                     >
                       Submit
                     </button>
