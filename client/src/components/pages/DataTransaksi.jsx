@@ -14,9 +14,68 @@ const DataTransaksi = () => {
   const [items, setItems] = useState("");
   const [selectedItemId, setSelectedItemId] = useState("");
   const [jumlahBarang, setJumlahBarang] = useState(0);
+  const [transactions, setTransactions] = useState([]);
+  const [transactionDetails, setTransactionDetails] = useState([]);
+  const [selectedTransactionIndex, setSelectedTransactionIndex] =
+    useState(null);
+  const [selectedTransactionDetail, setSelectedTransactionDetail] = useState({
+    kodeTransaksi: "",
+    tanggalTransaksi: "",
+    totalTransaksi: "",
+  });
 
-  // Mengambil data dari kontrak cerdas
-  const fetchData = async () => {
+  const handleTransactionClick = (
+    _kodeTransaksi,
+    _tanggalTransaksi,
+    _totalTransaksi
+  ) => {
+    setSelectedTransactionIndex(_kodeTransaksi);
+    setSelectedTransactionDetail({
+      kodeTransaksi: _kodeTransaksi,
+      tanggalTransaksi: _tanggalTransaksi,
+      totalTransaksi: _totalTransaksi,
+    });
+    // Fetch item details when a transaction is clicked
+    fetchItemDetails(accounts[0], _kodeTransaksi); // Mengirimkan akun pembeli dan kode transaksi
+  };
+
+  const fetchDataTransaksi = async () => {
+    if (transaksiContract) {
+      try {
+        const result = await transaksiContract.methods
+          .getAllTransactions(accounts[0])
+          .call();
+        // Merubah objek menjadi array
+        setTransactions(result);
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+      }
+    }
+  };
+
+  const fetchItemDetails = async (_buyer, _kodeTransaksi) => {
+    try {
+      const itemDetails = await transaksiContract.methods
+        .getItemDetailsExternal(_buyer, _kodeTransaksi)
+        .call();
+      setTransactionDetails(itemDetails);
+    } catch (error) {
+      console.error("Error fetching item details:", error);
+    }
+  };
+
+  // async function fetchDataTransaksi() {
+  //   if (transaksiContract) {
+  //     // Panggil fungsi getDataTransaksi pada smart contract
+  //     const transaksiData = await transaksiContract.methods
+  //       .getDataTransaksi(accounts[0])
+  //       .call();
+  //     setTransactions(transaksiData[0]);
+  //     setTransactionDetails(transaksiData[1]);
+  //   }
+  // }
+
+  const fetchDataItems = async () => {
     if (inventarisContract) {
       try {
         const itemCount = await inventarisContract.methods
@@ -41,8 +100,12 @@ const DataTransaksi = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchDataItems();
   }, [inventarisContract]);
+
+  useEffect(() => {
+    fetchDataTransaksi();
+  }, [transaksiContract]);
 
   const handleTambahBarangKeKeranjang = async () => {
     try {
@@ -53,8 +116,7 @@ const DataTransaksi = () => {
       setJumlahBarang(0);
       setSelectedItemId("");
       fetchKeranjang();
-      fetchData();
-      console.log("berhasil");
+      fetchDataTransaksi();
     } catch (error) {
       console.error("Error adding item to cart:", error);
     }
@@ -68,8 +130,6 @@ const DataTransaksi = () => {
         const keranjangItem = await transaksiContract.methods
           .getDataKeranjang(accounts[0])
           .call();
-        console.log(keranjangItem);
-
         setKeranjang(keranjangItem);
       } catch (error) {
         console.error("Error fetching keranjang:", error);
@@ -78,8 +138,7 @@ const DataTransaksi = () => {
   };
   useEffect(() => {
     fetchKeranjang();
-  }, [transaksiContract, accounts]);
-  console.log(keranjang);
+  }, []);
 
   const selesaikanTransaksi = async () => {
     try {
@@ -89,10 +148,40 @@ const DataTransaksi = () => {
       // Setelah transaksi selesai, perbarui keranjang
       setKeranjang([]);
       console.log("Transaksi berhasil diselesaikan");
+      fetchDataTransaksi();
     } catch (error) {
       console.error("Error completing transaction:", error);
     }
   };
+
+  const length = transactions[0] ? transactions[0].length : 0;
+
+  function formatRupiah(amount) {
+    // Mengonversi string angka menjadi tipe number
+    const numberAmount = parseInt(amount);
+
+    // Mengecek apakah input merupakan angka yang valid
+    if (isNaN(numberAmount)) {
+      return "Invalid input";
+    }
+
+    // Menggunakan Intl.NumberFormat untuk memformat angka ke dalam format Rupiah
+    const formatter = new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    });
+
+    // Mengembalikan hasil format Rupiah
+    return formatter.format(numberAmount);
+  }
+
+  function epochToDateTime(epoch) {
+    const date = new Date(epoch * 1000);
+    return date.toLocaleString();
+  }
+
+  console.log(transactionDetails);
 
   return (
     <div>
@@ -252,11 +341,18 @@ const DataTransaksi = () => {
                   <div className="modal-footer">
                     <button
                       type="button"
-                      className="btn"
-                      style={{ backgroundColor: "#CA0C0C", color: "white" }}
+                      className="btn btn-primary"
                       onClick={selesaikanTransaksi}
                     >
                       Submit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      data-dismiss="modal"
+                      style={{ marginLeft: "10px" }}
+                    >
+                      Close
                     </button>
                   </div>
                 </div>
@@ -282,38 +378,45 @@ const DataTransaksi = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {items &&
-                      items.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.kode}</td>
-                          <td>{item.nama}</td>
-                          <td>{item.stok}</td>
-                          <td>{item.harga}</td>
-
-                          <td>
-                            <button
-                              className="btn"
-                              style={{
-                                backgroundColor: "#F9E428",
-                                color: "white",
-                              }}
-                              data-toggle="modal"
-                              data-target="#myModal"
-                            >
-                              <i className="fas fa-eye"></i>
-                            </button>
-                            <button
-                              className="btn"
-                              style={{
-                                backgroundColor: "#056DE7",
-                                color: "white",
-                              }}
-                            >
-                              <i className="fas fa-pencil-alt"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                    {[...Array(length)].map((_, index) => (
+                      <tr key={index}>
+                        {/* Kolom 1: Kode */}
+                        <td>{transactions[0][index]}</td>
+                        {/* Kolom 2: Data pertama */}
+                        <td>{epochToDateTime(transactions[1][index])}</td>
+                        {/* Kolom 3: Data kedua */}
+                        <td>{formatRupiah(transactions[2][index])}</td>
+                        <td>
+                          <button
+                            className="btn"
+                            style={{
+                              backgroundColor: "#F9E428",
+                              color: "white",
+                            }}
+                            data-toggle="modal"
+                            data-target="#myModal"
+                            onClick={() =>
+                              handleTransactionClick(
+                                transactions[0][index],
+                                epochToDateTime(transactions[1][index]),
+                                formatRupiah(transactions[2][index])
+                              )
+                            }
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                          <button
+                            className="btn"
+                            style={{
+                              backgroundColor: "#056DE7",
+                              color: "white",
+                            }}
+                          >
+                            <i className="fas fa-pencil-alt"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                     {/* More rows */}
                   </tbody>
                 </table>
@@ -339,47 +442,63 @@ const DataTransaksi = () => {
                           <tr>
                             <th> Kode Transaksi </th>
                             <th> : </th>
-                            <th> 000001 </th>
+                            <th>{selectedTransactionDetail.kodeTransaksi}</th>
                           </tr>
                           <tr>
                             <th> Tanggal Transaksi </th>
                             <th> : </th>
-                            <th> 01-03-2024 </th>
+                            <th>
+                              {selectedTransactionDetail.tanggalTransaksi}
+                            </th>
                           </tr>
                         </table>
-                        <table className="table" style={{ marginTop: "1vh" }}>
-                          <thead
-                            className="thead-light"
-                            style={{ backgroundColor: "#dddddd" }}
-                          >
-                            <tr>
-                              <th scope="col">Nama Barang</th>
-                              <th scope="col">Jumlah</th>
-                              <th scope="col">Harga Satuan</th>
-                              <th scope="col">Total</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <th scope="row">Sabun</th>
-                              <td>2</td>
-                              <td>23.000</td>
-                              <td>46000</td>
-                            </tr>
-                            <tr>
-                              <th scope="row">Sabun</th>
-                              <td>2</td>
-                              <td>23.000</td>
-                              <td>46000</td>
-                            </tr>
-                            <tr>
-                              <th scope="row"></th>
-                              <td></td>
-                              <td>Total Transaksi</td>
-                              <td>92.000</td>
-                            </tr>
-                          </tbody>
-                        </table>
+                        {selectedTransactionIndex !== null && (
+                          <table className="table" style={{ marginTop: "1vh" }}>
+                            <thead
+                              class="thead-light"
+                              style={{ backgroundColor: "#dddddd" }}
+                            >
+                              <tr>
+                                <th scope="col">Nama Barang</th>
+                                <th scope="col">Jumlah</th>
+                                <th scope="col">Harga Satuan</th>
+                                <th scope="col">Total</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {transactionDetails.map((detail, idx) => (
+                                <tr key={idx}>
+                                  <th scope="col">{detail.namaBarang}</th>
+                                  <th scope="col">{detail.jumlah}</th>
+                                  <th scope="col">
+                                    {formatRupiah(detail.hargaSatuan)}
+                                  </th>
+                                  <th scope="col">
+                                    {formatRupiah(detail.totalHarga)}
+                                  </th>
+                                </tr>
+                              ))}
+                              <tr>
+                                <th scope="row"></th>
+                                <td></td>
+                                <td style={{ fontWeight: "bold" }}>
+                                  Total Transaksi
+                                </td>
+                                <td style={{ fontWeight: "bold" }}>
+                                  {selectedTransactionDetail.totalTransaksi}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        )}
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          data-dismiss="modal"
+                          style={{ marginLeft: "10px" }}
+                        >
+                          Close
+                        </button>
                       </div>
                     </div>
                   </div>
