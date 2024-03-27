@@ -138,7 +138,21 @@ const StockBarang = () => {
     setEditFormData({ ...editFormData, [e.target.name]: e.target.value });
   };
 
-  console.log(editFormData);
+  function formatRupiah(amount) {
+    const numberAmount = parseInt(amount);
+
+    if (isNaN(numberAmount)) {
+      return "Invalid input";
+    }
+
+    const formatter = new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    });
+
+    return formatter.format(numberAmount);
+  }
 
   return (
     <div>
@@ -336,7 +350,7 @@ const StockBarang = () => {
                           <td>{item.kode}</td>
                           <td>{item.nama}</td>
                           <td>{item.stok}</td>
-                          <td>{item.harga}</td>
+                          <td>{formatRupiah(item.harga)}</td>
                           <td>
                             <button
                               className="btn"

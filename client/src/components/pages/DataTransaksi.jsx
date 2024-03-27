@@ -1,10 +1,7 @@
-// DataTransaksi.js
 import React, { useState, useEffect } from "react";
 import Navbar from "./layout/Navbar";
 import Sidebar from "./layout/Sidebar";
 import useEth from "../../contexts/EthContext/useEth";
-// import { useState } from "react";
-// import useEth from "../../contexts/EthContext/useEth";
 
 const DataTransaksi = () => {
   const {
@@ -16,6 +13,7 @@ const DataTransaksi = () => {
   const [jumlahBarang, setJumlahBarang] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [transactionDetails, setTransactionDetails] = useState([]);
+  const [addedItems, setAddedItems] = useState([]);
   const [selectedTransactionIndex, setSelectedTransactionIndex] =
     useState(null);
   const [selectedTransactionDetail, setSelectedTransactionDetail] = useState({
@@ -35,8 +33,7 @@ const DataTransaksi = () => {
       tanggalTransaksi: _tanggalTransaksi,
       totalTransaksi: _totalTransaksi,
     });
-    // Fetch item details when a transaction is clicked
-    fetchItemDetails(accounts[0], _kodeTransaksi); // Mengirimkan akun pembeli dan kode transaksi
+    fetchItemDetails(accounts[0], _kodeTransaksi);
   };
 
   const fetchDataTransaksi = async () => {
@@ -45,7 +42,6 @@ const DataTransaksi = () => {
         const result = await transaksiContract.methods
           .getAllTransactions(accounts[0])
           .call();
-        // Merubah objek menjadi array
         setTransactions(result);
       } catch (error) {
         console.error("Error fetching transactions:", error);
@@ -53,6 +49,7 @@ const DataTransaksi = () => {
     }
   };
 
+  // Mengambil data detail item
   const fetchItemDetails = async (_buyer, _kodeTransaksi) => {
     try {
       const itemDetails = await transaksiContract.methods
@@ -63,17 +60,6 @@ const DataTransaksi = () => {
       console.error("Error fetching item details:", error);
     }
   };
-
-  // async function fetchDataTransaksi() {
-  //   if (transaksiContract) {
-  //     // Panggil fungsi getDataTransaksi pada smart contract
-  //     const transaksiData = await transaksiContract.methods
-  //       .getDataTransaksi(accounts[0])
-  //       .call();
-  //     setTransactions(transaksiData[0]);
-  //     setTransactionDetails(transaksiData[1]);
-  //   }
-  // }
 
   const fetchDataItems = async () => {
     if (inventarisContract) {
@@ -99,80 +85,94 @@ const DataTransaksi = () => {
     }
   };
 
+  const tambahDanSelesaikanTransaksi = async (_itemIds, _jumlahs) => {
+    try {
+      const _itemIds = addedItems.map((item) => item.id);
+      const _jumlahs = addedItems.map((item) => item.jumlah);
+
+      await transaksiContract.methods
+        .tambahDanSelesaikanTransaksi(_itemIds, _jumlahs)
+        .send({ from: accounts[0] });
+
+      setJumlahBarang(0);
+      setSelectedItemId("");
+      fetchDataItems();
+      setAddedItems([]);
+      fetchDataTransaksi();
+    } catch (error) {
+      console.error("Error adding and completing transaction:", error);
+    }
+  };
+
+  const handleTambahBarangKeKeranjang = () => {
+    if (!selectedItemId) {
+      console.error("Item belum dipilih.");
+      return;
+    }
+
+    const selectedItem = addedItems.find((item) => item.id === selectedItemId);
+    if (!selectedItem) {
+      console.error("Data barang tidak ditemukan.");
+      return;
+    }
+
+    const _itemIds = [selectedItemId];
+    const _jumlahs = [selectedItem.jumlah];
+
+    tambahDanSelesaikanTransaksi(_itemIds, _jumlahs);
+    setSelectedItemId("");
+    setJumlahBarang(0);
+
+    fetchDataTransaksi();
+  };
+
+  const addSelectedItem = () => {
+    if (Array.isArray(items)) {
+      const selectedItem = items[selectedItemId];
+      if (selectedItem) {
+        const totalHarga = selectedItem.harga * jumlahBarang;
+        const newItem = {
+          id: selectedItemId,
+          nama: selectedItem.nama,
+          jumlah: jumlahBarang,
+          hargaSatuan: selectedItem.harga,
+          totalHarga: totalHarga,
+        };
+        setAddedItems([...addedItems, newItem]);
+      } else {
+        console.error("Error: Item not found");
+      }
+    } else {
+      console.error("Error: items is not an array");
+    }
+  };
+  console.log(selectedItemId);
+
   useEffect(() => {
     fetchDataItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inventarisContract]);
 
   useEffect(() => {
     fetchDataTransaksi();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transaksiContract]);
-
-  const handleTambahBarangKeKeranjang = async () => {
-    try {
-      await transaksiContract.methods
-        .tambahBarangKeKeranjang(selectedItemId, jumlahBarang)
-        .send({ from: accounts[0] });
-      // Jika berhasil tambah ke keranjang, refresh data barang
-      setJumlahBarang(0);
-      setSelectedItemId("");
-      fetchKeranjang();
-      fetchDataTransaksi();
-    } catch (error) {
-      console.error("Error adding item to cart:", error);
-    }
-  };
-
-  const [keranjang, setKeranjang] = useState([]);
-
-  const fetchKeranjang = async () => {
-    if (transaksiContract) {
-      try {
-        const keranjangItem = await transaksiContract.methods
-          .getDataKeranjang(accounts[0])
-          .call();
-        setKeranjang(keranjangItem);
-      } catch (error) {
-        console.error("Error fetching keranjang:", error);
-      }
-    }
-  };
-  useEffect(() => {
-    fetchKeranjang();
-  }, []);
-
-  const selesaikanTransaksi = async () => {
-    try {
-      await transaksiContract.methods
-        .selesaikanTransaksi()
-        .send({ from: accounts[0] });
-      // Setelah transaksi selesai, perbarui keranjang
-      setKeranjang([]);
-      console.log("Transaksi berhasil diselesaikan");
-      fetchDataTransaksi();
-    } catch (error) {
-      console.error("Error completing transaction:", error);
-    }
-  };
 
   const length = transactions[0] ? transactions[0].length : 0;
 
   function formatRupiah(amount) {
-    // Mengonversi string angka menjadi tipe number
     const numberAmount = parseInt(amount);
 
-    // Mengecek apakah input merupakan angka yang valid
     if (isNaN(numberAmount)) {
       return "Invalid input";
     }
 
-    // Menggunakan Intl.NumberFormat untuk memformat angka ke dalam format Rupiah
     const formatter = new Intl.NumberFormat("id-ID", {
       style: "currency",
       currency: "IDR",
       minimumFractionDigits: 0,
     });
 
-    // Mengembalikan hasil format Rupiah
     return formatter.format(numberAmount);
   }
 
@@ -259,47 +259,51 @@ const DataTransaksi = () => {
                     </h4>
                     <br />
                     <table>
-                      <tr>
-                        <th> Kode Transaksi </th>
-                        <th> : </th>
-                        <th> 000001 </th>
-                      </tr>
-                      <tr>
-                        <th> Tanggal Transaksi </th>
-                        <th> : </th>
-                        <th> 01-03-2024 </th>
-                      </tr>
-                      <tr>
-                        <th> Nama Barang </th>
-                        <th> : </th>
-                        <th>
-                          <select
-                            value={selectedItemId}
-                            onChange={(e) => setSelectedItemId(e.target.value)}
-                          >
-                            <option value="">Pilih Barang</option>
-                            {items &&
-                              items.map((item) => (
-                                <option key={item.id} value={item.id - 1}>
-                                  {item.nama}
-                                </option>
-                              ))}
-                          </select>
-                        </th>
-                      </tr>
-                      <tr>
-                        <th> Jumlah Barang </th>
-                        <th> : </th>
-                        <th>
-                          {" "}
-                          <input
-                            type="number"
-                            placeholder=""
-                            value={jumlahBarang}
-                            onChange={(e) => setJumlahBarang(e.target.value)}
-                          />{" "}
-                        </th>
-                      </tr>
+                      <tbody>
+                        <tr>
+                          <th> Kode Transaksi </th>
+                          <th> : </th>
+                          <th> 000001 </th>
+                        </tr>
+                        <tr>
+                          <th> Tanggal Transaksi </th>
+                          <th> : </th>
+                          <th> 01-03-2024 </th>
+                        </tr>
+                        <tr>
+                          <th> Nama Barang </th>
+                          <th> : </th>
+                          <th>
+                            <select
+                              value={selectedItemId}
+                              onChange={(e) =>
+                                setSelectedItemId(e.target.value)
+                              }
+                            >
+                              <option value="">Pilih Barang</option>
+                              {Array.isArray(items) &&
+                                items.map((item) => (
+                                  <option key={item.id} value={item.id - 1}>
+                                    {item.nama}
+                                  </option>
+                                ))}
+                            </select>
+                          </th>
+                        </tr>
+                        <tr>
+                          <th> Jumlah Barang </th>
+                          <th> : </th>
+                          <th>
+                            {" "}
+                            <input
+                              type="number"
+                              placeholder=""
+                              value={jumlahBarang}
+                              onChange={(e) => setJumlahBarang(e.target.value)}
+                            />{" "}
+                          </th>
+                        </tr>
+                      </tbody>
                     </table>
                     <button
                       className="btn"
@@ -308,9 +312,7 @@ const DataTransaksi = () => {
                         color: "white",
                         fontSize: "14px",
                       }}
-                      // data-toggle="modal"
-                      // data-target="#transaksiModal"
-                      onClick={handleTambahBarangKeKeranjang}
+                      onClick={addSelectedItem}
                     >
                       Tambah ke Tabel
                     </button>
@@ -327,9 +329,9 @@ const DataTransaksi = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {keranjang.map((item, index) => (
+                        {addedItems.map((item, index) => (
                           <tr key={index}>
-                            <th scope="row">{item.namaBarang}</th>
+                            <td>{item.nama}</td>
                             <td>{item.jumlah}</td>
                             <td>{item.hargaSatuan}</td>
                             <td>{item.totalHarga}</td>
@@ -342,7 +344,7 @@ const DataTransaksi = () => {
                     <button
                       type="button"
                       className="btn btn-primary"
-                      onClick={selesaikanTransaksi}
+                      onClick={handleTambahBarangKeKeranjang}
                     >
                       Submit
                     </button>
@@ -380,11 +382,8 @@ const DataTransaksi = () => {
                   <tbody>
                     {[...Array(length)].map((_, index) => (
                       <tr key={index}>
-                        {/* Kolom 1: Kode */}
                         <td>{transactions[0][index]}</td>
-                        {/* Kolom 2: Data pertama */}
                         <td>{epochToDateTime(transactions[1][index])}</td>
-                        {/* Kolom 3: Data kedua */}
                         <td>{formatRupiah(transactions[2][index])}</td>
                         <td>
                           <button
@@ -408,6 +407,7 @@ const DataTransaksi = () => {
                           <button
                             className="btn"
                             style={{
+                              marginLeft: "10px",
                               backgroundColor: "#056DE7",
                               color: "white",
                             }}
@@ -417,7 +417,6 @@ const DataTransaksi = () => {
                         </td>
                       </tr>
                     ))}
-                    {/* More rows */}
                   </tbody>
                 </table>
                 <div
@@ -455,7 +454,7 @@ const DataTransaksi = () => {
                         {selectedTransactionIndex !== null && (
                           <table className="table" style={{ marginTop: "1vh" }}>
                             <thead
-                              class="thead-light"
+                              className="thead-light"
                               style={{ backgroundColor: "#dddddd" }}
                             >
                               <tr>
